@@ -195,11 +195,11 @@ jobs:
       if: success()
       with:
         script: |
-          // Keep only last 3 workflow runs
+          // Keep only last 10 workflow runs
           const runs = await github.rest.actions.listWorkflowRuns({
             owner: context.repo.owner,
             repo: context.repo.repo,
-            workflow_id: context.workflow
+            workflow_id: 'R1S-H5.yml'
           });
           for (const run of runs.data.workflow_runs.slice(3)) {
             await github.rest.actions.deleteWorkflowRun({

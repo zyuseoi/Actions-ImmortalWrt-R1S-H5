@@ -41,7 +41,7 @@ jobs:
         echo "=== Initial Disk Space ==="
         df -h
         sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/lib/jvm
-        sudo rm -rf /usr/local/.ghcup /usr/local/share/powershell /snap /var/snap /var/lib/snapd
+        sudo rm -rf /usr/local/.ghcup /usr/local/share/powershell
         sudo apt-get remove -y '^dotnet-.*' '^llvm-.*' '^libllvm.*' 'php.*' '^mysql-.*' snapd
         sudo apt-get autoremove -y --purge
         sudo apt-get clean
@@ -135,19 +135,12 @@ jobs:
         sudo apt clean
         df -h
 
-    - name: Compile the firmware (Optimized) 🔥
+    - name: Compile the firmware (Optimized)
       id: compile
       run: |
         cd openwrt
-        # Use fewer threads to reduce peak memory/disk usage
-        THREADS=$(( $(nproc) > 4 ? 4 : $(nproc) ))
-        echo "Using $THREADS threads to avoid OOM/disk full"
-        make -j$THREADS V=s 2>&1 | tee build.log
-        # If failed, try single thread
-        if [ ${PIPESTATUS[0]} -ne 0 ]; then
-          echo "Multi-thread build failed, retrying with -j1..."
-          make -j1 V=s
-        fi
+        echo "Using -j1 to maximize stability on GitHub Actions"
+        make -j1 V=s 2>&1 | tee build.log
         echo "status=success" >> "$GITHUB_OUTPUT"
         grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
         [ -s DEVICE_NAME ] && echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> $GITHUB_ENV

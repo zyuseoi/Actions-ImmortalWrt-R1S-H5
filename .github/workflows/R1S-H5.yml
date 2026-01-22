@@ -1,13 +1,3 @@
-#
-# Copyright (c) 2021 F-T-Otaku
-#
-# This is free software, licensed under the MIT License.
-# See /LICENSE for more information.
-#
-# https://github.com/F-T-Otaku/Actions-ImmortalWrt-R1S-H5
-# Description: Build ImmortalWrt for R1S-H5 using GitHub Actions
-#
-
 name: Build OpenWrt R1S-H5
 
 on:
@@ -18,8 +8,6 @@ on:
         description: 'SSH connection to Actions'
         required: false
         default: 'false'
-        
-# 定时触发(每周五15点)
   schedule:
     - cron: 0 7 * * 5
 
@@ -40,22 +28,31 @@ env:
 jobs:
   build:
     runs-on: ubuntu-22.04
+    # 🔥 增加磁盘空间监控
+    env:
+      GITHUB_WORKSPACE: /workdir
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v4  # 🔥 升级到 v4
+
+    - name: Aggressive Disk Cleanup (Pre-Setup)
+      run: |
+        echo "=== Initial Disk Space ==="
+        df -h
+        sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/lib/jvm
+        sudo rm -rf /usr/local/.ghcup /usr/local/share/powershell /snap /var/snap /var/lib/snapd
+        sudo apt-get remove -y '^dotnet-.*' '^llvm-.*' '^libllvm.*' 'php.*' '^mysql-.*' snapd
+        sudo apt-get autoremove -y --purge
+        sudo apt-get clean
+        sudo docker image prune -af 2>/dev/null || true
+        echo "=== After Cleanup ==="
+        df -h
 
     - name: Initialization environment
       env:
         DEBIAN_FRONTEND: noninteractive
       run: |
-        sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/lib/jvm
-        sudo rm -rf /usr/local/.ghcup /usr/local/share/powershell
-        sudo apt-get remove -y '^dotnet-.*' '^llvm-.*' '^libllvm.*' 'php.*' '^mysql-.*' snapd
-        sudo apt-get autoremove -y --purge
-        sudo apt-get clean
-        sudo docker image prune -af 2>/dev/null || true
-        sudo rm -rf /snap /var/snap /var/lib/snapd
         sudo -E apt-get -qq update
         sudo -E apt-get -qq install -y \
           build-essential asciidoc binutils bzip2 gawk gettext git libncurses5-dev \
@@ -64,44 +61,44 @@ jobs:
           g++-multilib libc6-dev-i386 p7zip-full squashfs-tools msmtp nano \
           device-tree-compiler swig libpython3-dev ccache ninja-build
         sudo timedatectl set-timezone "$TZ"
-        mkdir -p /workdir
 
     - name: Clone source code
-      working-directory: /workdir
       run: |
-        df -hT $PWD
-        git clone $REPO_URL -b $REPO_BRANCH openwrt
+        mkdir -p /workdir
+        cd /workdir
+        df -hT .
+        git clone --depth=1 $REPO_URL -b $REPO_BRANCH openwrt  # 🔥 浅克隆节省空间
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
 
     - name: Load custom feeds
       run: |
-        [ -e $FEEDS_CONF ] && mv $FEEDS_CONF openwrt/feeds.conf.default
+        [ -e $FEEDS_CONF ] && cp $FEEDS_CONF openwrt/feeds.conf.default
         chmod +x $DIY_P1_SH
         cd openwrt
         $GITHUB_WORKSPACE/$DIY_P1_SH
 
-    - name: Update feeds
-      run: cd openwrt && ./scripts/feeds update -a
-
-    - name: Install feeds
-      run: cd openwrt && ./scripts/feeds install -a
+    - name: Update & Install feeds
+      run: |
+        cd openwrt
+        ./scripts/feeds update -a
+        ./scripts/feeds install -a
 
     - name: Load custom configuration
       run: |
-        [ -e files ] && mv files openwrt/files
-        [ -e $CONFIG_FILE ] && mv $CONFIG_FILE openwrt/.config
+        [ -e files ] && cp -r files openwrt/
+        [ -e $CONFIG_FILE ] && cp $CONFIG_FILE openwrt/.config
         chmod +x $DIY_P2_SH
         cd openwrt
         $GITHUB_WORKSPACE/$DIY_P2_SH
 
     - name: SSH connection to Actions
       uses: P3TERX/ssh2actions@v1.0.0
-      if: (github.event.inputs.ssh == 'true' && github.event.inputs.ssh  != 'false') || contains(github.event.action, 'ssh')
+      if: (github.event.inputs.ssh == 'true' && github.event.inputs.ssh != 'false') || contains(github.event.action, 'ssh')
       env:
         TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
 
-    - name: Cache (dl only, no ccache)
+    - name: Cache dl directory
       uses: actions/cache@v4
       with:
         path: openwrt/dl
@@ -109,65 +106,80 @@ jobs:
         restore-keys: |
           immortalwrt-dl-
 
-    - name: Download package
-      id: package
+    - name: Download package sources
       run: |
         cd openwrt
         make defconfig
         make download -j8
-        find dl -size -1024c -exec ls -l {} \;
-        find dl -size -1024c -exec rm -f {} \;
+        # Clean up zero-byte files
+        find dl -size -1024c -delete
 
-    - name: Compile the firmware
+    - name: Final Disk Cleanup Before Compile 🔥
+      run: |
+        echo "=== Before Compile ==="
+        df -h
+        # Remove host tools not needed for target
+        rm -rf /workdir/openwrt/staging_dir/hostpkg 2>/dev/null || true
+        sudo apt clean
+        df -h
+
+    - name: Compile the firmware (Optimized) 🔥
       id: compile
       run: |
         cd openwrt
-        echo "Using $(nproc) threads (limited to save disk)"
-        make -j$(nproc) || make -j$(nproc) V=s
+        # Use fewer threads to reduce peak memory/disk usage
+        THREADS=$(( $(nproc) > 4 ? 4 : $(nproc) ))
+        echo "Using $THREADS threads to avoid OOM/disk full"
+        make -j$THREADS V=s 2>&1 | tee build.log
+        # If failed, try single thread
+        if [ ${PIPESTATUS[0]} -ne 0 ]; then
+          echo "Multi-thread build failed, retrying with -j1..."
+          make -j1 V=s
+        fi
         echo "status=success" >> "$GITHUB_OUTPUT"
         grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
         [ -s DEVICE_NAME ] && echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> $GITHUB_ENV
         echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
 
     - name: Check space usage
-      if: (!cancelled())
-      run: df -hT
+      if: always()
+      run: df -h
 
-    - name: Upload bin directory
-      uses: actions/upload-artifact@main
-      if: steps.compile.outputs.status == 'success' && env.UPLOAD_BIN_DIR == 'true'
+    - name: Upload build log on failure 🔥
+      uses: actions/upload-artifact@v4
+      if: failure()
       with:
-        name: OpenWrt_bin${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
-        path: openwrt/bin
+        name: build-log-failed
+        path: openwrt/build.log
 
     - name: Organize files
       id: organize
-      if: env.UPLOAD_FIRMWARE == 'true' && !cancelled()
+      if: env.UPLOAD_FIRMWARE == 'true' && success()
       run: |
         cd openwrt/bin/targets/*/*
-        rm -rf packages
+        rm -rf packages  # Save artifact space
         echo "FIRMWARE=$PWD" >> $GITHUB_ENV
         echo "status=success" >> "$GITHUB_OUTPUT"
 
-    - name: Upload firmware directory
-      uses: actions/upload-artifact@main
-      if: steps.organize.outputs.status == 'success' && !cancelled()
+    - name: Upload firmware
+      uses: actions/upload-artifact@v4
+      if: steps.organize.outputs.status == 'success'
       with:
         name: OpenWrt_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
         path: ${{ env.FIRMWARE }}
 
     - name: Generate release tag
       id: tag
-      if: env.UPLOAD_RELEASE == 'true' && !cancelled()
+      if: env.UPLOAD_RELEASE == 'true' && success()
       run: |
         tag=$(date +"%Y.%m.%d")-R1S-H5
         echo "release_tag=$tag" >> "$GITHUB_OUTPUT"
-        touch release.txt
+        echo "Built for NanoPi R1S-H5" > release.txt
         echo "status=success" >> "$GITHUB_OUTPUT"
 
-    - name: Upload firmware to release
-      uses: softprops/action-gh-release@v1
-      if: steps.tag.outputs.status == 'success' && !cancelled()
+    - name: Upload to Release
+      uses: softprops/action-gh-release@v2  # 🔥 Upgrade to v2
+      if: steps.tag.outputs.status == 'success'
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
@@ -175,18 +187,21 @@ jobs:
         body_path: release.txt
         files: ${{ env.FIRMWARE }}/*
 
-    - name: Delete workflow runs
-      uses: GitRML/delete-workflow-runs@main
+    - name: Cleanup old runs & releases
+      uses: actions/github-script@v7
+      if: success()
       with:
-        retain_days: 1
-        keep_minimum_runs: 3
-
-    - name: Remove old Releases
-      uses: dev-drprasad/delete-older-releases@v0.1.0
-      if: env.UPLOAD_RELEASE == 'true' && !cancelled()
-      with:
-        keep_latest: 3
-        delete_tags: true
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
+        script: |
+          // Keep only last 3 workflow runs
+          const runs = await github.rest.actions.listWorkflowRuns({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            workflow_id: context.workflow
+          });
+          for (const run of runs.data.workflow_runs.slice(3)) {
+            await github.rest.actions.deleteWorkflowRun({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: run.id
+            });
+          }

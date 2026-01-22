@@ -1,12 +1,14 @@
 #!/bin/bash
-# diy-part1.sh - Add required feeds for SagerNet Core and other packages
+# diy-part1.sh - Add custom feed for luci-app-speedtest-web (ZeaKyX)
 
-# Use official ImmortalWrt feeds (no third-party unless necessary)
-# SagerNet Core is now in the main ImmortalWrt packages feed (23.05+)
+# Add official ImmortalWrt feeds (already present by default, but safe to keep)
+# ./scripts/feeds update -a is called later
 
-# Optional: Uncomment if you need latest luci-app-docker from kenzo (usually not needed)
-# echo "src-git kenzo https://github.com/kenzok8/openwrt-packages" >> feeds.conf.default
+# Add ZeaKyX's speedtest-web feed (contains both speedtest-web and luci-app-speedtest-web)
+echo "src-git speedtest https://github.com/ZeaKyX/luci-app-speedtest-web.git" >> feeds.conf.default
 
-# Update feeds
+# Update all feeds: official + speedtest
 ./scripts/feeds update -a
+
+# Install all selected packages (including luci-app-speedtest-web and its dependency speedtest-web)
 ./scripts/feeds install -a

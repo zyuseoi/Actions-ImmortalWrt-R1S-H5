@@ -1,16 +1,12 @@
 #!/bin/bash
-#
-# Copyright (c) 2021 F-T-Otaku 
-#
-# This is free software, licensed under the MIT License.
-# See /LICENSE for more information.
-#
-# https://github.com/F-T-Otaku/Actions-ImmortalWrt-R1S-H5
-# File name: diy-part1.sh
-# Description: OpenWrt DIY script part 1 (Before Update feeds)
-#
+# diy-part1.sh - Add required feeds for SagerNet Core and other packages
 
-# Add a feed source
-sed -i '1i src-git speedtestweb https://github.com/ZeaKyX/luci-app-speedtest-web.git' feeds.conf.default
-# sed -i '1i src-git kenzo https://github.com/kenzok8/openwrt-packages' feeds.conf.default
-# sed -i '2i src-git small https://github.com/kenzok8/small' feeds.conf.default
+# Use official ImmortalWrt feeds (no third-party unless necessary)
+# SagerNet Core is now in the main ImmortalWrt packages feed (23.05+)
+
+# Optional: Uncomment if you need latest luci-app-docker from kenzo (usually not needed)
+# echo "src-git kenzo https://github.com/kenzok8/openwrt-packages" >> feeds.conf.default
+
+# Update feeds
+./scripts/feeds update -a
+./scripts/feeds install -a

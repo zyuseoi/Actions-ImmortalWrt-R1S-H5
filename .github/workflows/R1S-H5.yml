@@ -72,7 +72,7 @@ jobs:
           g++-multilib libc6-dev-i386 p7zip-full squashfs-tools msmtp nano \
           device-tree-compiler swig libpython3-dev ccache ninja-build
         sudo timedatectl set-timezone "$TZ"
-        mkdir -p /workdir
+        sudo mkdir -p /workdir
 
     - name: Clone source code
       run: |

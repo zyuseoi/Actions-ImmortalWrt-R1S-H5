@@ -119,7 +119,7 @@ jobs:
             device_name="r1s-h5"
           fi
           echo "DEVICE_NAME=$device_name" >> "$GITHUB_ENV"
-          echo "FILE_DATE= $(date +"%Y%m%d%H%M")">> "$GITHUB_ENV"
+          echo "FILE_DATE=$(date +"%Y%m%d%H%M")">> "$GITHUB_ENV"
           echo "status=success">> "$GITHUB_OUTPUT"
         else
           echo "Build FAILED!">&2
@@ -141,7 +141,7 @@ jobs:
       if: success()
       run: |
         echo "=== Firmware output directory contents ==="
-        find openwrt/bin -type f   $ -name "*.bin"-o -name "*.img" -o -name "*.gz" $  | sort
+        find openwrt/bin -type f $ -name "*.bin" -o -name "*.img" -o -name "*.gz" $ | sort
         ls -lh openwrt/bin/targets/*/*/
 
     - name: Organize files

@@ -53,9 +53,9 @@ jobs:
 
     - name: Clone source code
       run: |
-        echo "Working in:  $GITHUB_WORKSPACE"
+        echo "Working in: $GITHUB_WORKSPACE"
         df -hT .
-        git clone --depth=1 "$REPO_URL"  -b "$REPO_BRANCH" openwrt
+        git clone --depth=1 "$REPO_URL" -b "$REPO_BRANCH" openwrt
 
     - name: Load custom feeds
       run: |
@@ -82,8 +82,8 @@ jobs:
       uses: P3TERX/ssh2actions@v1.0.0
       if: (github.event.inputs.ssh == 'true' && github.event.inputs.ssh != 'false') || contains(github.event.action, 'ssh')
       env:
-        TELEGRAM_CHAT_ID:  ${{secrets.TELEGRAM_CHAT_ID}}
-        TELEGRAM_BOT_TOKEN:  ${{secrets.TELEGRAM_BOT_TOKEN}}
+        TELEGRAM_CHAT_ID: ${{secrets.TELEGRAM_CHAT_ID}}
+        TELEGRAM_BOT_TOKEN: ${{secrets.TELEGRAM_BOT_TOKEN}}
 
     - name: Cache dl directory
       uses: actions/cache@v4
@@ -133,20 +133,6 @@ jobs:
       if: always()
       run: df -h
 
-    - name: Upload build log on failure
-      uses: actions/upload-artifact@v4
-      if: failure()
-      with:
-        name: build-log-failed
-        path: openwrt/build.log
-
-    - name: Debug - List generated firmware files
-      if: success()
-      run: |
-        echo "=== Firmware output directory contents ==="
-        find openwrt/bin -type f $ -name "*.bin" -o -name "*.img" -o -name "*.gz" $ | sort
-        ls -lh openwrt/bin/targets/*/*/
-
     - name: Organize files
       id: organize
       if: env.UPLOAD_FIRMWARE == 'true' && success()
@@ -156,17 +142,17 @@ jobs:
           echo "ERROR: No firmware output directory found!">&2
           exit 1
         fi
-        echo "Found firmware directory:  $firmware_dir"
+        echo "Found firmware directory: $firmware_dir"
         rm -rf "$firmware_dir/packages"
-        echo "FIRMWARE= $firmware_dir">> "$GITHUB_ENV"
+        echo "FIRMWARE=$firmware_dir">> "$GITHUB_ENV"
         echo "status=success">> "$GITHUB_OUTPUT"
 
     - name: Upload firmware
       uses: actions/upload-artifact@v4
       if: steps.organize.outputs.status == 'success'
       with:
-        name: OpenWrt_firmware_ ${{env.DEVICE_NAME}}_ ${{env.FILE_DATE}}
-        path:  ${{env.FIRMWARE}}
+        name: OpenWrt_firmware_${{ env.DEVICE_NAME }}_${{ env.FILE_DATE }}
+        path: ${{ env.FIRMWARE }}/**
 
     - name: Generate release tag
       id: tag
@@ -177,30 +163,12 @@ jobs:
         echo "Built for NanoPi R1S-H5"> release.txt
         echo "status=success">> "$GITHUB_OUTPUT"
 
-    - name: Upload to Release
+    - name: Upload firmware to release
       uses: softprops/action-gh-release@v2
       if: steps.tag.outputs.status == 'success'
       env:
-        GITHUB_TOKEN:  ${{secrets.GITHUB_TOKEN}}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name:  ${{steps.tag.outputs.release_tag}}
+        tag_name: ${{ steps.tag.outputs.release_tag }}
         body_path: release.txt
-        files:  ${{env.FIRMWARE}}/*
-
-    - name: Cleanup old runs & releases
-      uses: actions/github-script@v7
-      if: success()
-      with:
-        script: |
-          const runs = await github.rest.actions.listWorkflowRuns({
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            workflow_id: 'R1S-H5.yml'
-          });
-          for (const run of runs.data.workflow_runs.slice(3)) {
-            await github.rest.actions.deleteWorkflowRun({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              run_id: run.id
-            });
-          }
+        files: ${{ env.FIRMWARE }}/*

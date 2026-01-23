@@ -55,14 +55,14 @@ jobs:
       run: |
         echo "Working in:  $GITHUB_WORKSPACE"
         df -hT .
-        git clone --depth=1 " $REPO_URL" -b " $REPO_BRANCH" openwrt
+        git clone --depth=1 "$REPO_URL"-b "$REPO_BRANCH"openwrt
 
     - name: Load custom feeds
       run: |
-        [ -e " $FEEDS_CONF" ] && cp " $FEEDS_CONF" openwrt/feeds.conf.default
-        chmod +x " $DIY_P1_SH"
+        [ -e "$FEEDS_CONF"] && cp "$FEEDS_CONF"openwrt/feeds.conf.default
+        chmod +x "$DIY_P1_SH"
         cd openwrt
-        " $GITHUB_WORKSPACE/ $DIY_P1_SH"
+        "$GITHUB_WORKSPACE/ $DIY_P1_SH"
 
     - name: Update & Install feeds
       run: |
@@ -73,10 +73,10 @@ jobs:
     - name: Load custom configuration
       run: |
         [ -e files ] && cp -r files openwrt/
-        [ -e " $CONFIG_FILE" ] && cp " $CONFIG_FILE" openwrt/.config
-        chmod +x " $DIY_P2_SH"
+        [ -e "$CONFIG_FILE"] && cp "$CONFIG_FILE"openwrt/.config
+        chmod +x "$DIY_P2_SH"
         cd openwrt
-        " $GITHUB_WORKSPACE/ $DIY_P2_SH"
+        "$GITHUB_WORKSPACE/ $DIY_P2_SH"
 
     - name: SSH connection to Actions
       uses: P3TERX/ssh2actions@v1.0.0
@@ -115,14 +115,14 @@ jobs:
         if make -j1 V=s 2>&1 | tee build.log; then
           echo "Build succeeded!"
           device_name= $(grep -oP '^CONFIG_TARGET_.*DEVICE_\K[^=]+(?==y)' .config | head -n1)
-          if [ -z " $device_name" ]; then
+          if [ -z "$device_name"]; then
             device_name="r1s-h5"
           fi
-          echo "DEVICE_NAME= $device_name" >> " $GITHUB_ENV"
-          echo "FILE_DATE= $(date +"%Y%m%d%H%M")" >> " $GITHUB_ENV"
-          echo "status=success" >> " $GITHUB_OUTPUT"
+          echo "DEVICE_NAME= $device_name">> "$GITHUB_ENV"
+          echo "FILE_DATE= $(date +"%Y%m%d%H%M")">> "$GITHUB_ENV"
+          echo "status=success">> "$GITHUB_OUTPUT"
         else
-          echo "Build FAILED!" >&2
+          echo "Build FAILED!">&2
           exit 1
         fi
 
@@ -141,7 +141,7 @@ jobs:
       if: success()
       run: |
         echo "=== Firmware output directory contents ==="
-        find openwrt/bin -type f   $ -name "*.bin" -o -name "*.img" -o -name "*.gz"  $  | sort
+        find openwrt/bin -type f   $ -name "*.bin"-o -name "*.img"-o -name "*.gz" $  | sort
         ls -lh openwrt/bin/targets/*/*/
 
     - name: Organize files
@@ -149,14 +149,14 @@ jobs:
       if: env.UPLOAD_FIRMWARE == 'true' && success()
       run: |
         firmware_dir= $(find openwrt/bin/targets -mindepth 2 -maxdepth 2 -type d | head -n1)
-        if [ -z " $firmware_dir" ]; then
-          echo "ERROR: No firmware output directory found!" >&2
+        if [ -z "$firmware_dir"]; then
+          echo "ERROR: No firmware output directory found!">&2
           exit 1
         fi
         echo "Found firmware directory:  $firmware_dir"
-        rm -rf " $firmware_dir/packages"
-        echo "FIRMWARE= $firmware_dir" >> " $GITHUB_ENV"
-        echo "status=success" >> " $GITHUB_OUTPUT"
+        rm -rf "$firmware_dir/packages"
+        echo "FIRMWARE= $firmware_dir">> "$GITHUB_ENV"
+        echo "status=success">> "$GITHUB_OUTPUT"
 
     - name: Upload firmware
       uses: actions/upload-artifact@v4
@@ -170,9 +170,9 @@ jobs:
       if: env.UPLOAD_RELEASE == 'true' && success()
       run: |
         tag= $(date +"%Y.%m.%d")-R1S-H5
-        echo "release_tag= $tag" >> " $GITHUB_OUTPUT"
-        echo "Built for NanoPi R1S-H5" > release.txt
-        echo "status=success" >> " $GITHUB_OUTPUT"
+        echo "release_tag= $tag">> "$GITHUB_OUTPUT"
+        echo "Built for NanoPi R1S-H5"> release.txt
+        echo "status=success">> "$GITHUB_OUTPUT"
 
     - name: Upload to Release
       uses: softprops/action-gh-release@v2

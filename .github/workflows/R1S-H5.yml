@@ -93,9 +93,12 @@ jobs:
         restore-keys: |
           immortalwrt-dl-
 
-    - name: Download package sources
+    - name: Finalize config and Download sources
       run: |
         cd openwrt
+        echo "Finalizing configuration with defconfig..."
+        make defconfig
+        echo "Downloading sources..."
         make download -j8
         find dl -size -1024c -delete
 

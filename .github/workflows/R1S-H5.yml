@@ -66,7 +66,7 @@ jobs:
           libglib2.0-dev libtool xmlto rsync wget subversion mercurial \
           g++-multilib libc6-dev-i386 p7zip-full squashfs-tools msmtp nano \
           device-tree-compiler swig libpython3-dev ccache ninja-build
-        sudo timedatectl set-timezone " $ TZ"
+        sudo timedatectl set-timezone "$TZ"
         sudo mkdir -p /workdir
 
     - name: Clone source code

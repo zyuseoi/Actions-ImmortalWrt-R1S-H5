@@ -135,24 +135,19 @@ jobs:
 
     - name: Organize files
       id: organize
-      if: env.UPLOAD_FIRMWARE == 'true' && success()
+      if: env.UPLOAD_FIRMWARE == 'true' && !cancelled()
       run: |
-        firmware_dir=$(find openwrt/bin/targets -mindepth 2 -maxdepth 2 -type d | head -n1)
-        if [ -z "$firmware_dir" ]; then
-          echo "ERROR: No firmware output directory found!">&2
-          exit 1
-        fi
-        echo "Found firmware directory: $firmware_dir"
-        rm -rf "$firmware_dir/packages"
-        echo "FIRMWARE=$firmware_dir">> "$GITHUB_ENV"
-        echo "status=success">> "$GITHUB_OUTPUT"
+        cd openwrt/bin/targets/*/*
+        rm -rf packages
+        echo "FIRMWARE=$PWD" >> " $GITHUB_ENV"
+        echo "status=success" >> " $GITHUB_OUTPUT"
 
-    - name: Upload firmware
+    - name: Upload firmware directory
       uses: actions/upload-artifact@v4
-      if: steps.organize.outputs.status == 'success'
+      if: steps.organize.outputs.status == 'success' && !cancelled()
       with:
         name: OpenWrt_firmware_${{ env.DEVICE_NAME }}_${{ env.FILE_DATE }}
-        path: ${{ env.FIRMWARE }}/**
+        path: ${{ env.FIRMWARE }}
 
     - name: Generate release tag
       id: tag
@@ -165,7 +160,7 @@ jobs:
 
     - name: Upload firmware to release
       uses: softprops/action-gh-release@v2
-      if: steps.tag.outputs.status == 'success'
+      if: steps.tag.outputs.status == 'success' && !cancelled()
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:

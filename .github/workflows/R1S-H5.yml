@@ -61,9 +61,9 @@ jobs:
 
     - name: Clone source code
       run: |
-        echo "Working in:  $ GITHUB_WORKSPACE"
+        echo "Working in: $GITHUB_WORKSPACE"
         df -hT .
-        git clone --depth=1 " $ REPO_URL" -b " $ REPO_BRANCH" openwrt
+        git clone --depth=1 "$REPO_URL" -b "$REPO_BRANCH" openwrt
 
     - name: Load custom feeds
       run: |

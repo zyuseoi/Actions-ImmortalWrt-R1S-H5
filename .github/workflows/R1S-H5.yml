@@ -24,6 +24,8 @@ env:
 jobs:
   build:
     runs-on: ubuntu-22.04
+    env:
+      GITHUB_WORKSPACE: /workdir
 
     steps:
     - name: Checkout
@@ -51,6 +53,9 @@ jobs:
           libglib2.0-dev libtool xmlto rsync wget subversion mercurial \
           g++-multilib libc6-dev-i386 p7zip-full squashfs-tools \
           device-tree-compiler ccache ninja-build
+
+        sudo timedatectl set-timezone " $ TZ"
+        sudo mkdir -p /workdir
 
         echo "=== After Setup ==="
         df -h
@@ -107,7 +112,7 @@ jobs:
       run: |
         echo "=== Before Compile ==="
         df -h
-        rm -rf openwrt/staging_dir/hostpkg 2>/dev/null || true
+        rm -rf /workdir/openwrt/staging_dir/hostpkg 2>/dev/null || true
         sudo apt clean
         df -h
 

@@ -54,7 +54,6 @@ jobs:
           g++-multilib libc6-dev-i386 p7zip-full squashfs-tools \
           device-tree-compiler ccache ninja-build
 
-        sudo timedatectl set-timezone " $ TZ"
         sudo mkdir -p /workdir
 
         echo "=== After Setup ==="

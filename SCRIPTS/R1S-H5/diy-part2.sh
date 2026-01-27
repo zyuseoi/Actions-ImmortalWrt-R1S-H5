@@ -49,30 +49,3 @@ EOF
 # === 3. Optional: Remove IPv6 kernel modules to save space (recommended) ===
 # This is done via .config, but we ensure no IPv6 packages are installed
 # (Your .config already omits most IPv6 modules – good!)
-
-# === 4. Home Assistant init script (unchanged) ===
-cat > files/etc/init.d/homeassistant << 'EOF'
-#!/bin/sh /etc/rc.common
-START=99
-USE_PROCD=1
-
-start_service() {
-    procd_open_instance
-    procd_set_param command docker run --name homeassistant \
-        --privileged \
-        --restart=unless-stopped \
-        -v /etc/homeassistant:/config \
-        -v /etc/localtime:/etc/localtime:ro \
-        --network=host \
-        ghcr.io/home-assistant/home-assistant:stable
-    procd_set_param stdout 1
-    procd_set_param stderr 1
-    procd_close_instance
-}
-EOF
-
-chmod +x files/etc/init.d/homeassistant
-
-# === 5. Cleanup before compile ===
-rm -rf staging_dir/hostpkg 2>/dev/null || true
-rm -rf build_dir/host* 2>/dev/null || true

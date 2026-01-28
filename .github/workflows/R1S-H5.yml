@@ -1,12 +1,3 @@
-#
-# Copyright (c) 2021 F-T-Otaku
-#
-# This is free software, licensed under the MIT License.
-# See /LICENSE for more information.
-#
-# https://github.com/F-T-Otaku/Actions-ImmortalWrt-R1S-H5
-# Description: Build ImmortalWrt for R1S-H5 using GitHub Actions
-#
 
 name: Build OpenWrt R1S-H5
 
@@ -21,15 +12,13 @@ on:
 
 env:
   REPO_URL: https://github.com/immortalwrt/immortalwrt
-  REPO_BRANCH: openwrt-23.05
+  REPO_BRANCH: openwrt-18.06-k5.4
   FEEDS_CONF: feeds.conf.default
   CONFIG_FILE: SEED/R1S-H5/seed.config
   DIY_P1_SH: SCRIPTS/R1S-H5/diy-part1.sh
   DIY_P2_SH: SCRIPTS/R1S-H5/diy-part2.sh
   UPLOAD_BIN_DIR: false
   UPLOAD_FIRMWARE: true
-  UPLOAD_COWTRANSFER: false
-  UPLOAD_WETRANSFER: false
   UPLOAD_RELEASE: true
   TZ: Asia/Shanghai
 

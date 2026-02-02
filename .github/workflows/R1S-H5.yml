@@ -36,26 +36,11 @@ jobs:
       run: |
         sudo apt update
         sudo apt install -y \
-          build-essential \
-          ccache \
-          clang \
-          cmake \
-          diffutils \
-          g++ \
-          gawk \
-          gcc \
-          gettext \
-          git \
-          libncurses5-dev \
-          libssl-dev \
-          python3 \
-          python3-distutils \
-          python3-pip \
-          rsync \
-          subversion \
-          unzip \
-          wget \
-          zlib1g-dev
+          build-essential ccache clang cmake diffutils g++ gawk gcc gettext git \
+          libncurses5-dev libssl-dev python3 python3-distutils python3-pip \
+          rsync subversion unzip wget zlib1g-dev
+        sudo touch /swapfile
+        sudo chmod 000 /swapfile  # 无读写执行权限
         sudo timedatectl set-timezone "$TZ"
         sudo mkdir -p /workdir
         sudo chown $USER:$GROUPS /workdir
